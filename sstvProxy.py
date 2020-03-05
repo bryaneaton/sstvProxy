@@ -81,8 +81,9 @@ if args.headless or 'headless' in sys.argv:
 
 app = Flask(__name__, static_url_path='')
 
-__version__ = 1.837
+__version__ = 1.838
 # Changelog
+# 1.838 - Blank Channel Icon number change
 # 1.837 - Web work
 # 1.836 - Addition of sports.m3u8 which includes groups for current sports
 # 1.8354 - Removal of trailing '==' from URLs.
@@ -1229,8 +1230,7 @@ def dl_icons(channum):
 	logger.debug("Downloading icons")
 	icontemplate = 'https://guide.smoothstreams.tv/assets/images/channels/{0}.png'
 	# create blank icon
-	urllib.request.urlretrieve(icontemplate.format(150),
-	                           os.path.join(os.path.dirname(sys.argv[0]), 'cache', 'empty.png'))
+	urllib.request.urlretrieve(icontemplate.format(149), os.path.join(os.path.dirname(sys.argv[0]), 'cache', 'empty.png'))
 	for i in range(1, channum + 1):
 		name = str(i) + '.png'
 		try:
