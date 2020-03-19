@@ -3142,7 +3142,7 @@ A url source for the epg "overridexml":"url/string"</p>""")
 		html.write("<h2>Work in progress.</h2>")
 
 		html.write("<h2>Proxy URL Paths</h2>")
-		html.write("""<p>m3u8 playlists can be called using http://ip:port/sstv/playlist.m3u8 optional arguments include 'strm' to overide defaults</p>
+		html.write("""<p>m3u8 playlists can be called using http://ip:port/sstv/playlist.m3u8 optional arguments include 'strm', 'type', 'client' to overide defaults</p>
 <p>alternatively using http://ip:port/sstv/{strm}.m3u8 strm options are 'hls', 'hlsa', 'rtmp', 'mpegts', 'rtsp', 'dash', 'wss'</p>
 <p>a specific mpeg playlsit can also be accesed via http://ip:port/sstv/mpeg.2ts</p>
 <p>single channels can be called using http://ip:port/sstv/playlist.m3u8?ch=# or http://ip:port/sstv/ch# optional arguments 'strm','qual' to overide defaults</p>
