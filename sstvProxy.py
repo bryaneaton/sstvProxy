@@ -81,8 +81,9 @@ if args.headless or 'headless' in sys.argv:
 
 app = Flask(__name__, static_url_path='')
 
-__version__ = 1.840
+__version__ = 1.841
 # Changelog
+# 1.841 - ?client argument added to playlist requests ie external.m3u8?client=vlc options are currently 'kodi''vlc''browser''perfectplayer''plex''tvh''atv''samsung''tv'
 # 1.840 - External and test playlists work around. ?type argument added to playlist requests ie external.m3u8?type=1 options are 1-4
 # 1.838 - Blank Channel Icon number change
 # 1.837 - Web work
@@ -1928,9 +1929,13 @@ def build_channel_map_sstv():
 
 def build_playlist(host, strmType=None, request=None):
 	rqsttype = False
+	clienttype = False
 	if request and request.args.get('type'):
 		logger.debug("Type overwrite being applied.")
 		rqsttype = request.args.get('type')
+	elif request and request.args.get('client'):
+		logger.debug("Client overwrite being applied.")
+		clienttype = request.args.get('client')
 	# standard dynamic playlist
 	global chan_map
 	if not strmType or strmType not in streamtype: strmType = STRM
@@ -1941,6 +1946,8 @@ def build_playlist(host, strmType=None, request=None):
 			# build channel url
 			if rqsttype:
 				url = "{0}/playlist.m3u8?ch={1}&strm={2}&qual={3}&type=%s" % rqsttype
+			elif clienttype:
+				url = "{0}/playlist.m3u8?ch={1}&strm={2}&qual={3}&client=%s" % clienttype
 			else:
 				url = "{0}/playlist.m3u8?ch={1}&strm={2}&qual={3}"
 			if strmType == 'mpegts':
@@ -3326,6 +3333,7 @@ def bridge(request_file):
 	logger.debug(request)
 	try:
 		client = find_client(request)
+		if request.args.get('client'): client = request.args.get('client')
 		logger.debug("Client is %s, user agent is %s" % (client, request.headers['User-Agent']))
 	except:
 		logger.debug("No user-agent provided by %s", request.environ.get('REMOTE_ADDR'))
@@ -3562,7 +3570,7 @@ def bridge(request_file):
 				logger.debug("returning response")
 				return response
 
-			elif returntype == 1 or client == 'kodi':
+			elif returntype == 1 or client == 'kodi' or client == 'perfectplayer':
 				# hlsTemplate = 'https://{0}.smoothstreams.tv:443/{1}/ch{2}q{3}.stream/playlist.m3u8?wmsAuthSign={4}'
 				# ss_url = hlsTemplate.format(SRVR, SITE, sanitized_channel, qual, token['hash'])
 				# some players are having issues with http/https redirects
