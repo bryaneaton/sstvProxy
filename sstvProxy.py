@@ -81,8 +81,9 @@ if args.headless or 'headless' in sys.argv:
 
 app = Flask(__name__, static_url_path='')
 
-__version__ = 1.838
+__version__ = 1.840
 # Changelog
+# 1.840 - External and test playlists work around. ?type argument added to playlist requests ie external.m3u8?type=1 options are 1-4
 # 1.838 - Blank Channel Icon number change
 # 1.837 - Web work
 # 1.836 - Addition of sports.m3u8 which includes groups for current sports
@@ -1261,7 +1262,8 @@ def thread_updater():
 			urllib.request.urlretrieve(latestfile, os.path.join(os.path.dirname(sys.argv[0]), 'updates', newfilename))
 
 
-def find_client(useragent):
+def find_client(request):
+	useragent = request.headers['User-Agent']
 	if 'kodi' in useragent.lower():
 		return 'kodi'
 	elif 'vlc' in useragent.lower():
@@ -1445,7 +1447,7 @@ def findChannelURL(input_url=None, qual='1', target_serv=SRVR, fail=0):
 def launch_browser():
 	try:
 		import webbrowser
-		webbrowser.open('%s://%s:%i%s' % ('http', LISTEN_IP, LISTEN_PORT, '/sstv/index.html'))
+		if not args.debug: webbrowser.open('%s://%s:%i%s' % ('http', LISTEN_IP, LISTEN_PORT, '/sstv/index.html'))
 	except Exception as e:
 		logger.error(u"Could not launch browser: %s" % e)
 
@@ -1924,7 +1926,11 @@ def build_channel_map_sstv():
 	return chan_map
 
 
-def build_playlist(host, strmType=None):
+def build_playlist(host, strmType=None, request=None):
+	rqsttype = False
+	if request and request.args.get('type'):
+		logger.debug("Type overwrite being applied.")
+		rqsttype = request.args.get('type')
 	# standard dynamic playlist
 	global chan_map
 	if not strmType or strmType not in streamtype: strmType = STRM
@@ -1933,7 +1939,10 @@ def build_playlist(host, strmType=None):
 	for pos in range(1, len(chan_map) + 1):
 		try:
 			# build channel url
-			url = "{0}/playlist.m3u8?ch={1}&strm={2}&qual={3}"
+			if rqsttype:
+				url = "{0}/playlist.m3u8?ch={1}&strm={2}&qual={3}&type=%s" % rqsttype
+			else:
+				url = "{0}/playlist.m3u8?ch={1}&strm={2}&qual={3}"
 			if strmType == 'mpegts':
 				url = "{0}/mpeg.2ts?ch={1}&strm={2}&qual={3}"
 			vaders_url = "http://vapi.vaders.tv/play/{0}.{1}?"
@@ -2101,16 +2110,16 @@ def build_test_playlist(hosts):
 	new_playlist += '%s\n' % template.format('rtmp', 'dnaw1', '3625', SITE, "01", 1, '', token['hash'])
 	count = 3
 	for host in hosts:
-		new_playlist += '#EXTINF:-1 tvg-id="%s" tvg-name="Redirect" channel-id="%s","Redirect"\n' % (count, count)
+		new_playlist += '#EXTINF:-1 tvg-id="%s" tvg-name="Redirect" channel-id="%s","Redirect %s"\n' % (count, count, host)
 		new_playlist += '%s\n' % url.format(host, '1')
 		count += 1
-		new_playlist += '#EXTINF:-1 tvg-id="%s" tvg-name="File" channel-id="%s","File"\n' % (count, count)
+		new_playlist += '#EXTINF:-1 tvg-id="%s" tvg-name="File" channel-id="%s","File %s"\n' % (count, count, host)
 		new_playlist += '%s\n' % url.format(host, '2')
 		count += 1
-		new_playlist += '#EXTINF:-1 tvg-id="%s" tvg-name="Variable" channel-id="%s","Variable"\n' % (count, count)
+		new_playlist += '#EXTINF:-1 tvg-id="%s" tvg-name="Variable" channel-id="%s","Variable %s"\n' % (count, count, host)
 		new_playlist += '%s\n' % url.format(host, '3')
 		count += 1
-		new_playlist += '#EXTINF:-1 tvg-id="%s" tvg-name="URL" channel-id="%s","URL"\n' % (count, count)
+		new_playlist += '#EXTINF:-1 tvg-id="%s" tvg-name="URL" channel-id="%s","URL %s"\n' % (count, count, host)
 		new_playlist += '%s\n' % url.format(host, '4')
 		count += 1
 
@@ -3314,8 +3323,9 @@ def index(request_file):
 def bridge(request_file):
 	global playlist, token, chan_map, kodiplaylist, tvhplaylist, FALLBACK
 	check_token()
+	logger.debug(request)
 	try:
-		client = find_client(request.headers['User-Agent'])
+		client = find_client(request)
 		logger.debug("Client is %s, user agent is %s" % (client, request.headers['User-Agent']))
 	except:
 		logger.debug("No user-agent provided by %s", request.environ.get('REMOTE_ADDR'))
@@ -3455,14 +3465,14 @@ def bridge(request_file):
 
 	# returns combined playlist
 	elif request_file.lower() == 'combined.m3u8':
-		extraplaylist = build_playlist(SERVER_HOST) + obtain_m3u8()
+		extraplaylist = build_playlist(SERVER_HOST, request=request) + obtain_m3u8()
 		logger.info("Combined channels playlist was requested by %s", request.environ.get('REMOTE_ADDR'))
 		logger.info("Sending playlist to %s", request.environ.get('REMOTE_ADDR'))
 		return Response(extraplaylist, mimetype='application/x-mpegURL')
 
 	# returns external playlist
 	elif request_file.lower().startswith('external'):
-		extplaylist = build_playlist(EXT_HOST)
+		extplaylist = build_playlist(EXT_HOST, request=request)
 		logger.info("External channels playlist was requested by %s", request.environ.get('REMOTE_ADDR'))
 		return Response(extplaylist, mimetype='application/x-mpegURL')
 
@@ -3536,12 +3546,13 @@ def bridge(request_file):
 
 			# useful for debugging
 			logger.debug("URL returned: %s" % output_url)
-
-			if request.args.get('type'):
-				returntype = request.args.get('type')
-			else:
+			try:
+				if request.args.get('type'):
+					returntype = int(request.args.get('type'))
+				else:
+					returntype = 3
+			except:
 				returntype = 3
-
 			# different return types as different clients require it. Expect this to change as clients fail on certain things like dynamic hls
 			if strm == 'rtmp' or request.args.get('response'):
 				response = redirect(output_url, code=302)
@@ -3582,7 +3593,7 @@ def bridge(request_file):
 				strmType = request.args.get('strm')
 			else:
 				strmType = STRM
-			playlist = build_playlist(SERVER_HOST, strmType)
+			playlist = build_playlist(SERVER_HOST, strmType, request=request)
 			logger.info(
 				"All channels playlist(%s) was requested by %s" % (strmType, request.environ.get('REMOTE_ADDR')))
 			return Response(playlist, mimetype='application/x-mpegURL')
@@ -3593,7 +3604,7 @@ def bridge(request_file):
 			strmType = strng
 		else:
 			strmType = STRM
-		playlist = build_playlist(SERVER_HOST, strmType)
+		playlist = build_playlist(SERVER_HOST, strmType, request=request)
 		logger.info("All channels playlist(%s) was requested by %s" % (strmType, request.environ.get('REMOTE_ADDR')))
 		return Response(playlist, mimetype='application/x-mpegURL')
 	# HDHomeRun emulated json files for Plex Live tv.
