@@ -35,7 +35,7 @@
 ###SOFTWARE AND DOCUMENTATION, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 ###DAMAGE.
 ###
-
+from __future__ import absolute_import, division, unicode_literals
 import logging, os, sys, time, argparse, json, gzip, base64, platform, threading, subprocess, urllib, glob, sqlite3, \
 	array, socket, struct, ntpath, timeit, re
 
@@ -81,8 +81,9 @@ if args.headless or 'headless' in sys.argv:
 
 app = Flask(__name__, static_url_path='')
 
-__version__ = 1.841
+__version__ = 1.85
 # Changelog
+# 1.85 - Server List Updated
 # 1.841 - ?client argument added to playlist requests ie external.m3u8?client=vlc options are currently 'kodi''vlc''browser''perfectplayer''plex''tvh''atv''samsung''tv'
 # 1.840 - External and test playlists work around. ?type argument added to playlist requests ie external.m3u8?type=1 options are 1-4
 # 1.838 - Blank Channel Icon number change
@@ -455,10 +456,6 @@ serverList = [
 	['    FR-Paris', 'deu-fr1'],
 	['    NL-Mix', 'deu-nl'],
 	['    NL-1', 'deu-nl1'],
-	['    NL-2', 'deu-nl2'],
-	['    NL-3 Ams', 'deu-nl3'],
-	['    NL-4 Breda', 'deu-nl4'],
-	['    NL-5 Enschede', 'deu-nl5'],
 	['    UK-Mix', 'deu-uk'],
 	['    UK-London1', 'deu-uk1'],
 	['    UK-London2', 'deu-uk2'],
@@ -466,15 +463,12 @@ serverList = [
 	['   East-Mix', 'dnae'],
 	['   West-Mix', 'dnaw'],
 	['   East-NJ', 'dnae1'],
-	['   East-VA', 'dnae2'],
-	# ['   East-Mtl', 'dnae3'],
-	# ['   East-Tor', 'dnae4'],
-	['   East-ATL', 'dnae5'],
-	['   East-NY', 'dnae6'],
+	['   East-NY', 'dnae2'],
+	['   East-Chi', 'dnae3'],
+	['   East-Atl', 'dnae4'],
+	['   East-VA', 'dnae5'],
 	['   West-Phx', 'dnaw1'],
 	['   West-LA', 'dnaw2'],
-	['   West-SJ', 'dnaw3'],
-	['   West-Chi', 'dnaw4'],
 	['Asia', 'dap'],
 	['   Asia1', 'dap1'],
 	['   Asia2', 'dap2'],
